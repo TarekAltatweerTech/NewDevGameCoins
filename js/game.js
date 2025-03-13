@@ -183,14 +183,13 @@ var explanationProperty = {
 	height: 10
 };
 
-//result settings
 var resultSettings = {
 	mode: "score", //display result by "score" or "timer"
 	reverse: false, //display result in reverse
 	scoreText: "نقاطك اليوم : [NUMBER]", //score text display
 	timerText: "BEST TIME : [NUMBER]" ,//timer text display
-	winText: "مبروك ! لقد حصلت على [NUMBER] FG , صالحة لغاية [DATETIME]", //win text display
-    loseText: "لم تحقق النقاط المطلوبة !حظ موفق في المرة القادمة", //lose text display
+    winText: "مبروك ! لقد تحصلت على [NUMBER] نقطة", //win text display
+    loseText: "! لقد خسرت اليوم بمجموع نقاط [NUMBER] , حظ موفق لك فالايام القادمة", //lose text display
 };
 
 //Social share, [SCORE] will replace with game score
@@ -247,9 +246,9 @@ function buildGameButton() {
 		$(this).addClass('disabledbutton');
 		playSound('soundClick');
         // check if already game start
-        axios.post("/check-game", {
+        axios.post("/start_in_webview", {
 		}).then(response =>{
-			if(response.data.success == true){
+			if(response.data.data == 1){
 				goPage('game');
 			}else{
 				goPage('main');
@@ -447,35 +446,45 @@ async function goPage(page) {
 			if (resultSettings.mode == 'score') {
 				// $('#resultScore').html(resultSettings.scoreText.replace('[NUMBER]', playerData.score));
                 // declare variables
-                let count_required_answer,coins_final,expire_date;
+				let score,avg_score,score_final,status_win;
                 let url_win = window.location.origin;
                 // get avg score from server
-                await axios.get("/count-answer",{
+                await axios.get("/get-avg-score",{
                 }).then(response => {
-                    count_required_answer = response.data.data
-                    coins_final = playerData.count_number_answer >= count_required_answer ? playerData.score : 0;
+                    avg_score = response.data.data;
+                    console.log("avg_score : " + avg_score);
+                    console.log("score played : " + playerData.score);
+                    console.log("points questions : " + response.data.points_questions);
+
+                    // set score
+                    score = `${playerData.score}/${response.data.points_questions}`;
+                    console.log("score : " + score);
+
+                    // check if score is greater than avg score
+                    if (playerData.score >= avg_score) {
+                        status_win = 2;
+                        $('#statusScore').html(resultSettings.winText.replace('[NUMBER]', score));
+                        $('.itemWinnerCup img').attr('src', url_win + '/assets/winner.svg');
+                    }else{
+                        status_win = 3;
+                        $('#statusScore').html(resultSettings.loseText.replace('[NUMBER]', score));
+                        $('.itemWinnerCup img').attr('src', url_win + '/assets/looser.svg');
+                    }
+                    //score_final = playerData.score >= avg_score ? playerData.score : 0;
+                    score_final = playerData.score;
+                    // // set score
+                    // $('#resultScore').html(resultSettings.scoreText.replace('[NUMBER]', score));
                 }).catch(error => {
                     console.log(error);
                     alert('خطأ في الاتصال بالسيرفر');
                 });
+
                 // submit score to server
-                await axios.post("/end",{
-					coins: coins_final,
-                    //status_win: status_win
+                await axios.post("/complete",{
+					total_points: score_final,
+                    status_win: status_win
 				}).then(function (response) {
-					if (playerData.count_number_answer >= count_required_answer) {
-						coins_final = playerData.score;
-                        console.log(coins_final);
-                        expire_date = response.data.expire_date;
-                        let text_html = `مبروك ! لقد حصلت على ${coins_final}FG , صالحة لغاية ${expire_date}`;
-                        $('#statusScore').html(text_html);
-                        $('.itemWinnerCup img').attr('src', url_win + '/assets/winner.svg');
-                    }else{
-                        let text_html = `لم تحقق النقاط المطلوبة !حظ موفق في المرة القادمة`;
-                        $('#statusScore').html(text_html);
-                        $('.itemWinnerCup img').attr('src', url_win + '/assets/looser.svg');
-                    }
-                    // delete the token
+					// delete the token
 					localStorage.removeItem('token');
 				})
 					.catch(function (error) {
@@ -2348,9 +2357,10 @@ function displayQuestionResult() {
 			playSound('soundAnswerCorrect');
             let currentQuestion = gameData.targetArray[gameData.sequenceNum];
             //console.log(currentQuestion);
-            let questionCoins = currentQuestion.coins
+            //let questionCoins = currentQuestion.coins
 			// this_is_point
-			playerData.score+=questionCoins;
+			//playerData.score+=questionCoins;
+			playerData.score+=10;
 			playerData.count_number_answer++;
             $('.score-number').html(playerData.count_number_answer);
             clearInterval(countdown);
