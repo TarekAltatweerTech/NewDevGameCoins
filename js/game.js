@@ -446,12 +446,13 @@ async function goPage(page) {
 			if (resultSettings.mode == 'score') {
 				// $('#resultScore').html(resultSettings.scoreText.replace('[NUMBER]', playerData.score));
                 // declare variables
-				let score,avg_score,score_final,status_win;
+				let score,avg_score,score_final,status_win,date_schedule;
                 let url_win = window.location.origin;
                 // get avg score from server
                 await axios.get("/get-avg-score",{
                 }).then(response => {
                     avg_score = response.data.data;
+					date_schedule = response.data.date_schedule;
                     console.log("avg_score : " + avg_score);
                     console.log("score played : " + playerData.score);
                     console.log("points questions : " + response.data.points_questions);
@@ -463,7 +464,11 @@ async function goPage(page) {
                     // check if score is greater than avg score
                     if (playerData.score >= avg_score) {
                         status_win = 2;
-                        $('#statusScore').html(resultSettings.winText.replace('[NUMBER]', score));
+						if(date_schedule === getTodayDate()){
+							$('#statusScore').html("مبرووك , دخلت سحبة علي كارتون منتجات جيكور هدية");
+						}else{
+							$('#statusScore').html(resultSettings.winText.replace('[NUMBER]', score));
+						}
                         $('.itemWinnerCup img').attr('src', url_win + '/assets/winner.svg');
                     }else{
                         status_win = 3;
@@ -3822,4 +3827,12 @@ function share(action) {
 	}
 
 	window.open(shareurl);
+}
+
+function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // الأشهر من 0 إلى 11
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
